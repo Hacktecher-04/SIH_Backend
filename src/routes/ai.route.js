@@ -5,7 +5,7 @@ const router = express.Router();
 
 router.use(protect)
 
-router.post('/create', aiController.create)
+router.post('/create/:prompt', aiController.create)
 router.get('/get', aiController.getAndCleanMessages)
 
 module.exports = router
