@@ -1,13 +1,14 @@
-const aiService = require('../services/ai.service');
 const aiModel = require('../models/ai.model');
 
-
-exports.create = async (req, res) => {
+exports.create = async (prompt) => {
     try {
-        const prompt = req.body.prompt;
+        const previosData = await aiModel.find({prompt});
+        if (previosData.length > 0) {
+            return previosData[0].response;
+        }
         const response = await aiService(prompt);
         res.status(200).json(response);
-        await aiModel.create({prompt, response});
+        await aiModel.create({userId, prompt, response});
     } catch (error) {
         res.status(500).send({message: error.message});
     }

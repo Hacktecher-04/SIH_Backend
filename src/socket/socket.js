@@ -1,4 +1,5 @@
 const socketIo = require('socket.io');
+const jwt = require('jsonwebtoken');
 
 function setupSocketIo(server) {
     const io = socketIo(server, {
@@ -10,8 +11,31 @@ function setupSocketIo(server) {
         }
     });
 
+    // io.on(('connection'), (socket, next) => {
+    //     const token = socket.headers;
+    //     if (!token) {
+    //         return next(new Error('Authentication error'));
+    //     }
+    //     console.log(token)
+
+    //     jwt.verify(token, 'your_secret_key', (err, decoded) => {
+    //         if (err) {
+    //             return next(new Error('Authentication error'));
+    //         }
+
+    //         socket.decoded = decoded;
+    //         next();
+    //     });
+    //     next();
+    // })
+
     io.on('connection', (socket) => {
-        console.log('A user connected');
+        socket.on('message', async(message) => {
+            console.log(message);
+            const response = await aiService();
+            console.log(response);
+            io.emit('message', response);
+        });
 
         socket.on('disconnect', () => {
             console.log('A user disconnected');

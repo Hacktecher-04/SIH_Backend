@@ -6,6 +6,9 @@ exports.register = async(userData) => {
         if(!userData){
             throw new Error("User data not found");
         }
+        if (!userData.password.length > 6){
+            console.log
+        }
         const user = await userModel.create(userData)
         if (!user) {
             throw new Error("User not registered")
