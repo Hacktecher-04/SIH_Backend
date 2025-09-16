@@ -1,4 +1,4 @@
-const roadmapService = require('../services//aiRoadmap.service');
+const roadmapService = require('../services/roadmap.service');
 
 const generateRoadmap = async (req, res) => {
     try {
