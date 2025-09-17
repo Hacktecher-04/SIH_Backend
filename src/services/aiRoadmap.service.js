@@ -1,4 +1,6 @@
 const { GoogleGenerativeAI } = require('@google/generative-ai');
+const fetch = require('node-fetch'); // npm install node-fetch
+require('dotenv').config();
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 
@@ -6,53 +8,54 @@ const tools = [
   {
     functionDeclarations: [
       {
-        name: "googleSearch",
+        name: 'googleSearch',
         description:
-          "Searches Google for the latest information, courses, articles, or tutorials on any given topic.",
+          'Search Google for the latest information, courses, articles, or tutorials on any given topic.',
         parameters: {
-          type: "OBJECT",
+          type: 'OBJECT',
           properties: {
             query: {
-              type: "STRING",
-              description: "The text to search for.",
+              type: 'STRING',
+              description: 'The text to search for.',
             },
           },
-          required: ["query"],
+          required: ['query'],
         },
       },
     ],
   },
 ];
 
+// 🔎 Real Google Search using Custom Search API
 async function performGoogleSearch(query) {
-  // Keep logs lightweight for speed
-  console.info(`🔍 Google Search: "${query}"`);
-  // Simulated fast response
-  return {
-    results: [
-      {
-        title: "Official Node.js Guide",
-        url: "https://nodejs.org/en/docs/guides",
-      },
-      {
-        title: "Express.js 'Hello World' Example",
-        url: "https://expressjs.com/en/starter/hello-world.html",
-      },
-    ],
-  };
+  const url = `https://www.googleapis.com/customsearch/v1?key=${process.env.GOOGLE_API_KEY}&cx=${process.env.GOOGLE_CX}&q=${encodeURIComponent(
+    query
+  )}`;
+
+  const res = await fetch(url);
+  if (!res.ok) throw new Error(`Google search failed: ${res.status}`);
+  const data = await res.json();
+
+  const results =
+    data.items?.map((item) => ({
+      title: item.title,
+      url: item.link,
+    })) ?? [];
+
+  return { results };
 }
 
-// Make model & chat reusable for speed
 const model = genAI.getGenerativeModel({
-  model: "gemini-2.0-flash",
+  model: 'gemini-2.0-flash',
   tools,
 });
 
 async function generateContentFromAI(goal, level, pace) {
-  const chat = model.startChat(); // fresh chat each time for clean context
+  const chat = model.startChat();
 
   const masterPrompt = `Generate a detailed learning roadmap in JSON format.
 Goal: "${goal}", Level: "${level}", Pace: "${pace}".
+Use the googleSearch tool to find real working resources. 
 Output ONLY JSON with this structure:
 {
   "title": "A concise title",
@@ -74,24 +77,19 @@ Output ONLY JSON with this structure:
   ]
 }`;
 
-  // 1. Send the first message
   let result = await chat.sendMessage(masterPrompt);
   let response = result.response;
 
-  // 2. Handle function calls fast
+  // handle Gemini’s tool calls
   const functionCalls = response.functionCalls?.();
   if (functionCalls?.length) {
     const call = functionCalls[0];
-    console.info(`⚡ Gemini called: ${call.name}`);
-
-    if (call.name === "googleSearch") {
+    if (call.name === 'googleSearch') {
       const apiResponse = await performGoogleSearch(call.args.query);
-
-      // 4. Send the search results back to the model
       const result2 = await chat.sendMessage([
         {
           functionResponse: {
-            name: "googleSearch",
+            name: 'googleSearch',
             response: apiResponse,
           },
         },
@@ -100,11 +98,9 @@ Output ONLY JSON with this structure:
     }
   }
 
-  // 3. Directly parse JSON without heavy regex
-  const responseText = response.text().trim();
-  // The model already outputs JSON; just strip ``` if present
-  const jsonMatch = responseText.match(/\{[\s\S]*\}/);
-  const jsonString = jsonMatch ? jsonMatch[0] : responseText;
+  const text = response.text().trim();
+  const jsonMatch = text.match(/\{[\s\S]*\}/);
+  const jsonString = jsonMatch ? jsonMatch[0] : text;
 
   return JSON.parse(jsonString);
 }
