@@ -9,7 +9,9 @@ const socketIO = require('./socket/socket');
 const app = express();
 const server = http.createServer(app);
 app.use(cors({
-    origin : 'http://localhost:3000',
+    origin : ['https://prismaroadmap.netlify.app',
+      "http://localhost:3000",
+    ],
     withCrendentials : true
 }));
 
