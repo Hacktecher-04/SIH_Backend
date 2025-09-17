@@ -1,6 +1,7 @@
-const { GoogleGenerativeAI } = require('@google/generative-ai');
-const fetch = require('node-fetch'); // npm install node-fetch
-require('dotenv').config();
+// generateContentFromAI.js
+require("dotenv").config();
+const { GoogleGenerativeAI } = require("@google/generative-ai");
+const searchAndFilter = require("../helpers/googleSearch");
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 
@@ -8,45 +9,22 @@ const tools = [
   {
     functionDeclarations: [
       {
-        name: 'googleSearch',
-        description:
-          'Search Google for the latest information, courses, articles, or tutorials on any given topic.',
+        name: "googleSearch",
+        description: "Searches Google dynamically for working links.",
         parameters: {
-          type: 'OBJECT',
+          type: "OBJECT",
           properties: {
-            query: {
-              type: 'STRING',
-              description: 'The text to search for.',
-            },
+            query: { type: "STRING", description: "Search query." },
           },
-          required: ['query'],
+          required: ["query"],
         },
       },
     ],
   },
 ];
 
-// 🔎 Real Google Search using Custom Search API
-async function performGoogleSearch(query) {
-  const url = `https://www.googleapis.com/customsearch/v1?key=${process.env.GOOGLE_API_KEY}&cx=${process.env.GOOGLE_CX}&q=${encodeURIComponent(
-    query
-  )}`;
-
-  const res = await fetch(url);
-  if (!res.ok) throw new Error(`Google search failed: ${res.status}`);
-  const data = await res.json();
-
-  const results =
-    data.items?.map((item) => ({
-      title: item.title,
-      url: item.link,
-    })) ?? [];
-
-  return { results };
-}
-
 const model = genAI.getGenerativeModel({
-  model: 'gemini-2.0-flash',
+  model: "gemini-2.0-flash",
   tools,
 });
 
@@ -55,7 +33,6 @@ async function generateContentFromAI(goal, level, pace) {
 
   const masterPrompt = `Generate a detailed learning roadmap in JSON format.
 Goal: "${goal}", Level: "${level}", Pace: "${pace}".
-Use the googleSearch tool to find real working resources. 
 Output ONLY JSON with this structure:
 {
   "title": "A concise title",
@@ -80,17 +57,17 @@ Output ONLY JSON with this structure:
   let result = await chat.sendMessage(masterPrompt);
   let response = result.response;
 
-  // handle Gemini’s tool calls
   const functionCalls = response.functionCalls?.();
   if (functionCalls?.length) {
     const call = functionCalls[0];
-    if (call.name === 'googleSearch') {
-      const apiResponse = await performGoogleSearch(call.args.query);
+    if (call.name === "googleSearch") {
+      const workingUrls = await searchAndFilter(call.args.query);
+
       const result2 = await chat.sendMessage([
         {
           functionResponse: {
-            name: 'googleSearch',
-            response: apiResponse,
+            name: "googleSearch",
+            response: { results: workingUrls },
           },
         },
       ]);
@@ -98,9 +75,9 @@ Output ONLY JSON with this structure:
     }
   }
 
-  const text = response.text().trim();
-  const jsonMatch = text.match(/\{[\s\S]*\}/);
-  const jsonString = jsonMatch ? jsonMatch[0] : text;
+  const responseText = response.text().trim();
+  const jsonMatch = responseText.match(/\{[\s\S]*\}/);
+  const jsonString = jsonMatch ? jsonMatch[0] : responseText;
 
   return JSON.parse(jsonString);
 }
