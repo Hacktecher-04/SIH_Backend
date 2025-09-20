@@ -8,5 +8,6 @@ router.use(protect)
 router.post('/create', aiRoadmapRoutes.generateRoadmap)
 router.get('/get', aiRoadmapRoutes.getAllUserRoadmaps)
 router.get('/:id', aiRoadmapRoutes.getSingleRoadmap)
+router.delete('/:id', aiRoadmapRoutes.deleteRoadmap)
 
 module.exports = router;

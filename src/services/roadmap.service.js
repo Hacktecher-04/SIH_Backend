@@ -25,8 +25,6 @@ const getRoadmapById = async (roadmapId, userId) => {
   if (!roadmap) {
     throw new Error("Roadmap not found.");
   }
-  console.log(roadmap.userId.toString());
-  console.log(userId);
   if (roadmap.userId.toString() !== userId.toString()) {
     throw new Error("You are not authorized to view this roadmap.");
   }
@@ -34,8 +32,21 @@ const getRoadmapById = async (roadmapId, userId) => {
   return roadmap;
 };
 
+const deleteRoadmap = async (roadmapId, userId) => {
+  const roadmap = await Roadmap.findById(roadmapId);
+  if (!roadmap) {
+    throw new Error("Roadmap not found.");
+  }
+  if (roadmap.userId.toString() !== userId.toString()) {
+    throw new Error("You are not authorized to delete this roadmap.");
+  }
+  await Roadmap.findByIdAndDelete(roadmapId);
+  return { message: "Roadmap deleted successfully." };
+}
+
 module.exports = {
   createRoadmap,
   getUserRoadmaps,
   getRoadmapById,
+  deleteRoadmap,
 };

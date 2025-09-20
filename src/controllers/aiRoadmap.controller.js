@@ -44,12 +44,23 @@ const getSingleRoadmap = async (req, res) => {
             data: roadmap
         });
     } catch (error) {
-        res.status(404).json({ success: false, message: error.message });
+        res.status(500).json({ success: false, message: error.message });
     }
 };
+
+const deleteRoadmap = async (req, res) => {
+    try {
+        const { id } = req.params;
+        await roadmapService.deleteRoadmap(id, req.user._id);
+        res.status(200).json({ success: true, message: "Roadmap deleted successfully." });
+    }catch {
+        res.status(500).json({ success: false, message: error.message });
+    }
+}
 
 module.exports = {
     generateRoadmap,
     getAllUserRoadmaps,
     getSingleRoadmap,
+    deleteRoadmap
 };
