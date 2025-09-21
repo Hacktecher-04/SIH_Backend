@@ -6,8 +6,8 @@ exports.register = async(userData) => {
         if(!userData){
             throw new Error("User data not found");
         }
-        if (!userData.password.length > 6){
-            console.log
+        if (userData.password.length < 6){
+            throw new Error("Password must be at least 6 characters long");
         }
         const user = await userModel.create(userData)
         if (!user) {
@@ -19,7 +19,7 @@ exports.register = async(userData) => {
             access_Token, refresh_Token
         }
     } catch (error) {
-        throw new Error(error.message);   
+        throw error;
     }
 }
 
@@ -102,3 +102,19 @@ exports.deleteUser = async (userId) => {
         throw new Error(error.message);
     }
 }
+
+exports.generateTokens = async (userId) => {
+    try {
+        const user = await userModel.findById(userId);
+        if (!user) {
+            throw new Error("User not found");
+        }
+        const access_Token = accessToken(user._id);
+        const refresh_Token = refreshToken(user._id);
+        return {
+            access_Token, refresh_Token
+        };
+    } catch (error) {
+        throw new Error(error.message);
+    }
+};

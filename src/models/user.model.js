@@ -33,8 +33,18 @@ const userSchema = mongoose.Schema({
     },
     password: {
         type: String,
-        required: true
-    }
+        required: function() { return !this.googleId && !this.githubId && !this.linkedinId; }
+    },
+    googleId: {
+        type: String,
+        unique: true,
+        sparse: true
+    },
+    githubId: {
+        type: String,
+        unique: true,
+        sparse: true
+    },
 },{timestamps : true})
 
 userSchema.pre('save', async function (next) {

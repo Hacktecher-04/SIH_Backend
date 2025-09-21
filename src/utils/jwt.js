@@ -1,12 +1,9 @@
 const jwt = require('jsonwebtoken');
 
-const access_Secret = process.env.JWT_SECRET;
-const access_Expiry = process.env.JWT_EXPIRY;
-const refresh_Secret = process.env.REFRESH_JWT_SECRET;
-const refresh_Expiry = process.env.REFRESH_JWT_EXPIRY; 
-
 exports.accessToken = (userId) => {
     try {
+        const access_Secret = process.env.JWT_SECRET;
+        const access_Expiry = process.env.JWT_EXPIRY;
         const access_Token = jwt.sign(
             { id: userId }, 
             access_Secret, 
@@ -20,6 +17,8 @@ exports.accessToken = (userId) => {
 
 exports.refreshToken = (userId) => {
     try {
+        const refresh_Secret = process.env.REFRESH_JWT_SECRET;
+        const refresh_Expiry = process.env.REFRESH_JWT_EXPIRY;
         const refresh_Token = jwt.sign(
             { id: userId }, 
             refresh_Secret, 
@@ -33,6 +32,7 @@ exports.refreshToken = (userId) => {
 
 exports.verify_Token = (token, secret) => {
     try {
+        const access_Secret = process.env.JWT_SECRET;
         const decoded = jwt.verify(token, access_Secret);
         return decoded;
     } catch (error) {
@@ -42,6 +42,7 @@ exports.verify_Token = (token, secret) => {
 
 exports.verify_Refresh_Token = (token) => {
     try {
+        const refresh_Secret = process.env.REFRESH_JWT_SECRET;
         const decoded = jwt.verify(token, refresh_Secret);
         return decoded;
     } catch (error) {

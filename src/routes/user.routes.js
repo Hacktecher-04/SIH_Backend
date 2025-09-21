@@ -1,4 +1,5 @@
 const express = require('express');
+const passport = require('passport');
 const userController = require('../controllers/user.controller');
 const { protect, refresh_Token } = require('../middlewares/user.middleware');
 const multer = require('multer');
@@ -12,5 +13,23 @@ router.get('/profile', protect, userController.getUser);
 router.put('/profile', protect, upload.single('profilePicture'), userController.updateUser);
 router.delete('/profile', protect, userController.deleteUser);
 router.get('/refresh_Token', refresh_Token, userController.refresh_Token)
+
+// Google OAuth routes
+router.get('/google', passport.authenticate('google', { scope: ['profile', 'email'] }));
+
+router.get(
+    '/google/callback',
+    passport.authenticate('google', { failureRedirect: '/login' }),
+    userController.googleAuthCallback
+);
+
+// GitHub OAuth routes
+router.get('/github', passport.authenticate('github', { scope: [ 'user:email' ] }));
+
+router.get(
+    '/github/callback',
+    passport.authenticate('github', { failureRedirect: '/login' }),
+    userController.githubAuthCallback
+);
 
 module.exports = router;
