@@ -27,22 +27,17 @@ passport.use(
         async (accessToken, refreshToken, profile, done) => {
             try {
                 let user = await User.findOne({ googleId: profile.id });
+                if (user) {
+                    return done(null, user);
+                }
                 if (profile.emails[0].value) {
                     const userData = await User.findOne({ email: profile.emails[0].value });
                     if (userData) {
-                        const updatedUser = await userModel.findByIdAndUpdate(
-                            userData._id,
-                            { githubId: profile.id },
-                            { new: true }
-                        );
-                        return done(null, updatedUser);
-
+                        userModel.findByIdAndUpdate(userData._id, { googleId: profile.id }, { new: true })
+                        return done(null, userData);
                     }
                 }
-
-                if (user) {
-                    return done(null, user);
-                } else {
+                else {
                     user = await User.create({
                         googleId: profile.id,
                         fullName: {
@@ -71,21 +66,30 @@ passport.use(new GitHubStrategy({
     async (accessToken, refreshToken, profile, done) => {
         try {
             let user = await User.findOne({ githubId: profile.id });
+            if (user) {
+                return done(null, user);
+            }
+            const generateUsername = (displayName) => {
+                const baseName = displayName
+                    .split(/\s+/)
+                    .filter(Boolean)
+                    .join('_')
+                    .toLowerCase();
+
+                const uniqueSuffix = Date.now();
+
+                return `${baseName}_${uniqueSuffix}`;
+            };
+
+            const profile = { displayName: 'John Doe' };
+            const username = generateUsername(profile.displayName);
+
             if (profile.emails[0].value) {
                 const userData = await User.findOne({ email: profile.emails[0].value });
                 if (userData) {
-                    const updatedUser = await userModel.findByIdAndUpdate(
-                        userData._id,
-                        { githubId: profile.id },
-                        { new: true }
-                    );
-                    return done(null, updatedUser);
-
+                    userModel.findByIdAndUpdate(userData._id, { githubId: profile.id }, { new: true })
+                    return done(null, userData);
                 }
-            }
-
-            if (user) {
-                return done(null, user);
             } else {
                 user = await User.create({
                     githubId: profile.id,
@@ -93,16 +97,15 @@ passport.use(new GitHubStrategy({
                         firstName: profile.displayName || profile.username,
                         lastName: '',
                     },
-                    username: profile.username,
+                    username: username,
                     email: profile.emails ? profile.emails[0].value : `${profile.username}@github.com`,
                     profilePicture: profile.photos[0].value,
                     role: 'user', // Default role
                 });
-                console.log(user);
                 return done(null, user);
             }
         } catch (err) {
             return done(err, null);
         }
     }
-)); 
+));
