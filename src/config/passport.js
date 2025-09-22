@@ -73,6 +73,7 @@ passport.use(new GitHubStrategy({
                 profilePicture: profile.photos[0].value,
                 role: 'user', // Default role
             });
+            console.log(user);
             return done(null, user);
         }
     } catch (err) {
