@@ -56,9 +56,12 @@ exports.verifyOtp = async (email, otpCode) => {
         if (isVerified) {
             throw new Error("Email already exist");
         }
-        const accessToken = jwt.access_Token(user)
+        const accessToken = jwt.accessToken(user._id)
         await otpModel.deleteOne({ email: email, otp: otpCode })
-        return true
+        return {
+            message: "OTP verified successfully",
+            accessToken
+        }
     } catch (error) {
         throw new Error(error.message);
     }

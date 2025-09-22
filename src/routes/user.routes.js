@@ -13,8 +13,12 @@ router.get('/profile', protect, userController.getUser);
 router.put('/profile', protect, upload.single('profilePicture'), userController.updateUser);
 router.delete('/profile', protect, userController.deleteUser);
 router.get('/refresh_Token', refresh_Token, userController.refresh_Token)
+router.post('/createOtp', userController.createOtp);
+router.post('/verifyOtp', userController.verifyOtp);
+router.post('/resendOtp', userController.resendOtp);
+router.post('/resetPassword', protect, userController.resetPassword);
+router.post('/newPassword', protect, userController.newPassword);
 
-// Google OAuth routes
 router.get('/google', passport.authenticate('google', { scope: ['profile', 'email'] }));
 
 router.get(
@@ -23,9 +27,7 @@ router.get(
     userController.googleAuthCallback
 );
 
-
-// GitHub OAuth routes
-router.get('/github', passport.authenticate('github', { scope: [ 'user:email' ] }));
+router.get('/github', passport.authenticate('github', { scope: ['user:email'] }));
 
 router.get(
     '/github/callback',

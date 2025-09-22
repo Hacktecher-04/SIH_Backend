@@ -1,12 +1,12 @@
 const userModel = require('../models/user.model');
-const {accessToken, refreshToken}= require('../utils/jwt')
+const { accessToken, refreshToken } = require('../utils/jwt')
 
-exports.register = async(userData) => {
+exports.register = async (userData) => {
     try {
-        if(!userData){
+        if (!userData) {
             throw new Error("User data not found");
         }
-        if (userData.password.length < 6){
+        if (userData.password.length < 6) {
             throw new Error("Password must be at least 6 characters long");
         }
         const user = await userModel.create(userData)
@@ -25,10 +25,10 @@ exports.register = async(userData) => {
 
 exports.login = async (userData) => {
     try {
-        if(!userData) {
-            throw new Error("User data not found");    
+        if (!userData) {
+            throw new Error("User data not found");
         }
-        const user = await userModel.findOne({email: userData.email})
+        const user = await userModel.findOne({ email: userData.email })
         if (!user) {
             throw new Error('Email doesnt exist')
         }
@@ -51,7 +51,7 @@ exports.getUser = async (userId) => {
         if (!userId) {
             throw new Error("User not found");
         }
-        const user = await userModel.findOne({_id: userId})
+        const user = await userModel.findOne({ _id: userId })
         return user
     } catch (error) {
         throw new Error(error.message);
@@ -63,7 +63,7 @@ exports.updateUser = async (userId, userData) => {
         if (!userId) {
             throw new Error("User not found");
         }
-        const user = await userModel.findOneAndUpdate({_id: userId}, userData, {new: true});
+        const user = await userModel.findOneAndUpdate({ _id: userId }, userData, { new: true });
         return user
     } catch (error) {
         throw new Error(error.message);
@@ -75,7 +75,7 @@ exports.refresh_Token = async (userId) => {
         if (!userId) {
             throw new Error("User not found");
         }
-        const user = await userModel.findOne({_id: userId});
+        const user = await userModel.findOne({ _id: userId });
         if (!user) {
             throw new Error("User not found");
         }
@@ -89,12 +89,44 @@ exports.refresh_Token = async (userId) => {
     }
 }
 
+exports.resetPassword = async (userData) => {
+    try {
+        if (!userData) {
+            throw new Error("User data not found");
+        }
+        await userModel.findOneAndUpdate({ email: userData.userId }, { password: userData.password }, { new: true });
+        return {
+            message: "Password reset successfully"
+        }
+    } catch (error) {
+        throw new Error(error.message);
+    }
+}
+
+exports.newPassword = async (userData) => {
+    try {
+        if (!userData) {
+            throw new Error("User data not found");
+        }
+        const isMatch = await userModel.comparePassword(userData.oldPassword);
+        if (!isMatch) {
+            throw new Error("Old password is incorrect");
+        }
+        await userModel.findOneAndUpdatet({ email: userData.userId }, { password: userData.password }, { new: true });
+        return {
+            message: "Password updated successfully"
+        }
+    } catch (error) {
+        throw new Error(error.message);
+    }
+}
+
 exports.deleteUser = async (userId) => {
     try {
         if (!userId) {
             throw new Error("User not found");
         }
-        await userModel.findOneAndDelete({_id: userId});
+        await userModel.findOneAndDelete({ _id: userId });
         return {
             message: "User deleted successfully"
         }

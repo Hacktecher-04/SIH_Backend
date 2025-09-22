@@ -1,5 +1,6 @@
 const userService = require('../services/user.service');
 const uploadImageService = require('../services/image.service');
+const passwordEmailService = require('../services/passwordEmail.service');
 
 exports.register = async (req, res) => {
     try {
@@ -44,6 +45,59 @@ exports.updateUser = async (req, res) => {
         res.status(200).json(user);
     } catch (err) {
         res.status(500).send({ message: err.message });
+    }
+}
+
+exports.createOtp = async (req, res) => {
+    try {
+        const otp = await passwordEmailService.sendEmail(req.body.email);
+        res.status(200).json(otp);
+    } catch (error) {
+        res.status(500).send({ message: error.message });
+    }
+}
+
+exports.verifyOtp = async (req, res) => {
+    try {
+        const verified = await passwordEmailService.verifyOtp(req.body.email, req.body.otp);
+        res.status(200).json(verified);
+    } catch (error) {
+        res.status(500).send({ message: error.message });
+    }
+}
+
+exports.resendOtp = async (req, res) => {
+    try {
+        const otp = await passwordEmailService.resendOtp(req.body.email);
+        res.status(200).json(otp);
+    } catch (error) {
+        res.status(500).send({ message: error.message });
+    }
+}
+
+exports.resetPassword = async (req, res) => {
+    try {
+        const userData = req.body;
+        if (req.user) {
+            userData.userId = req.user._id;
+        }
+        const user = await userService.resetPassword(userData);
+        res.status(200).json(user);
+    } catch (error) {
+        res.status(500).send({ message: error.message });
+    }
+}
+
+exports.newPassword = async (req, res) => {
+    try {
+        const userData = req.body;
+        if (req.user) {
+            userData.userId = req.user._id;
+        }
+        const user = await userService.newPassword(userData);
+        res.status(200).json(user);
+    }catch(error) {
+        res.status(500).send({ message: error.message });
     }
 }
 
