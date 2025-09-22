@@ -30,8 +30,13 @@ passport.use(
                 if (profile.emails[0].value) {
                     const userData = await User.findOne({ email: profile.emails[0].value });
                     if (userData) {
-                        userModel.findByIdAndUpdate(userData._id, { googleId: profile.id }, { new: true })
-                        return done(null, user);
+                        const updatedUser = await userModel.findByIdAndUpdate(
+                            userData._id,
+                            { githubId: profile.id },
+                            { new: true }
+                        );
+                        return done(null, updatedUser);
+
                     }
                 }
 
@@ -69,8 +74,13 @@ passport.use(new GitHubStrategy({
             if (profile.emails[0].value) {
                 const userData = await User.findOne({ email: profile.emails[0].value });
                 if (userData) {
-                    userModel.findByIdAndUpdate(userData._id, { githubId: profile.id }, { new: true })
-                    return done(null, user);
+                    const updatedUser = await userModel.findByIdAndUpdate(
+                        userData._id,
+                        { githubId: profile.id },
+                        { new: true }
+                    );
+                    return done(null, updatedUser);
+
                 }
             }
 
@@ -95,4 +105,4 @@ passport.use(new GitHubStrategy({
             return done(err, null);
         }
     }
-));
+)); 
