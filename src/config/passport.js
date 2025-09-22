@@ -30,6 +30,20 @@ passport.use(
                 if (user) {
                     return done(null, user);
                 }
+                const generateUsername = (displayName) => {
+                    const baseName = displayName
+                        .split(/\s+/)
+                        .filter(Boolean)
+                        .join('_')
+                        .toLowerCase();
+
+                    const uniqueSuffix = Date.now();
+
+                    return `${baseName}_${uniqueSuffix}`;
+                };
+
+                const profile = { displayName: 'John Doe' };
+                const username = generateUsername(profile.displayName);
                 if (profile.emails[0].value) {
                     const userData = await User.findOne({ email: profile.emails[0].value });
                     if (userData) {
@@ -44,7 +58,7 @@ passport.use(
                             firstName: profile.name.givenName,
                             lastName: profile.name.familyName,
                         },
-                        username: profile.displayName,
+                        username: username,
                         email: profile.emails[0].value,
                         profilePicture: profile.photos[0].value,
                         role: 'user', // Default role
