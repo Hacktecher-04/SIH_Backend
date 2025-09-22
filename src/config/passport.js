@@ -42,7 +42,6 @@ passport.use(
                     return `${baseName}_${uniqueSuffix}`;
                 };
 
-                const profile = { displayName: 'John Doe' };
                 const username = generateUsername(profile.displayName);
                 if (profile.emails[0].value) {
                     const userData = await User.findOne({ email: profile.emails[0].value });
@@ -95,7 +94,6 @@ passport.use(new GitHubStrategy({
                 return `${baseName}_${uniqueSuffix}`;
             };
 
-            const profile = { displayName: 'John Doe' };
             const username = generateUsername(profile.displayName);
 
             if (profile.emails[0].value) {
