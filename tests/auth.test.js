@@ -1,13 +1,24 @@
-jest.mock('../src/config/passport');
-
-jest.doMock('../src/utils/image.js', () => {});
-
-const passport = require('passport');
 jest.mock('passport', () => {
   const passport = {
     authenticate: jest.fn((strategy, options, callback) => (req, res, next) => {
-      if (callback) {
-        // This branch is for the strategy's verify callback
+      if (strategy === 'google' || strategy === 'github') {
+        // For initial OAuth routes, simulate a redirect
+        if (!req.query.code) { // Simulate initial redirect
+          res.redirect(302, `http://mock-oauth-provider.com/login?client_id=${options.clientID}&redirect_uri=${options.callbackURL}`);
+          return;
+        }
+        // For OAuth callback routes, simulate successful authentication
+        req.user = {
+          id: 'mockId',
+          displayName: 'Mock User',
+          username: 'mockuser',
+          emails: [{ value: 'mock@example.com' }],
+          photos: [{ value: 'mockphoto.jpg' }],
+          name: { givenName: 'Mock', familyName: 'User' }
+        };
+        next();
+      } else if (callback) {
+        // This branch is for the strategy's verify callback (e.g., local strategy)
         const user = {
           id: 'mockId',
           displayName: 'Mock User',
@@ -16,29 +27,39 @@ jest.mock('passport', () => {
           photos: [{ value: 'mockphoto.jpg' }],
           name: { givenName: 'Mock', familyName: 'User' }
         };
-        // Simulate a successful authentication by attaching user to req.user
         req.user = user;
         callback(null, user, null); // Call the strategy's verify callback
       } else {
-        // This branch is for the initial redirect
-        // Simulate a redirect to the OAuth provider
-        res.redirect(302, `http://mock-oauth-provider.com/login?client_id=${options.clientID}&redirect_uri=${options.callbackURL}`);
+        // This branch is for other cases, if any
+        next();
       }
-      next(); // Ensure next middleware is called for both cases
     }),
     serializeUser: jest.fn((user, done) => done(null, user.id)),
     deserializeUser: jest.fn((id, done) => done(null, { id: id, username: 'mockuser' })),
-    use: jest.fn(), // Add a mock for .use()
-    initialize: jest.fn(() => (req, res, next) => next()), // Add mock for initialize
-    session: jest.fn(() => (req, res, next) => next()),    // Add mock for session
+    use: jest.fn(),
+    initialize: jest.fn(() => (req, res, next) => next()),
+    session: jest.fn(() => (req, res, next) => next()),
   };
   return passport;
 });
 
+jest.mock('../src/config/passport', () => ({}));
+
+jest.doMock('../src/utils/image.js', () => {});
+
 const request = require('supertest');
 const server = require('../src/app');
 const User = require('../src/models/user.model');
+const userController = require('../src/controllers/user.controller');
 
+jest.mock('../src/controllers/user.controller', () => ({
+  ...jest.requireActual('../src/controllers/user.controller'),
+  createOtp: jest.fn(),
+  verifyOtp: jest.fn(),
+  resendOtp: jest.fn(),
+  resetPassword: jest.fn(),
+  newPassword: jest.fn(),
+}));
 
 describe('Auth API', () => {
   let token;
@@ -166,6 +187,83 @@ describe('Auth API', () => {
       expect(res.statusCode).toEqual(200);
       expect(res.body).toHaveProperty('access_Token');
       expect(res.body).toHaveProperty('refresh_Token');
+    });
+  });
+
+  describe('POST /api/auth/createOtp', () => {
+    it('should create an OTP', async () => {
+      userController.createOtp.mockImplementationOnce((req, res) => {
+        res.status(200).json({ success: true, message: 'OTP created successfully.' });
+      });
+
+      const res = await request(server)
+        .post('/api/auth/createOtp')
+        .send({ email: 'test@example.com' });
+
+      expect(res.statusCode).toEqual(200);
+      expect(res.body).toHaveProperty('message', 'OTP created successfully.');
+    });
+  });
+
+  describe('POST /api/auth/verifyOtp', () => {
+    it('should verify an OTP', async () => {
+      userController.verifyOtp.mockImplementationOnce((req, res) => {
+        res.status(200).json({ success: true, message: 'OTP verified successfully.' });
+      });
+
+      const res = await request(server)
+        .post('/api/auth/verifyOtp')
+        .send({ email: 'test@example.com', otp: '123456' });
+
+      expect(res.statusCode).toEqual(200);
+      expect(res.body).toHaveProperty('message', 'OTP verified successfully.');
+    });
+  });
+
+  describe('POST /api/auth/resendOtp', () => {
+    it('should resend an OTP', async () => {
+      userController.resendOtp.mockImplementationOnce((req, res) => {
+        res.status(200).json({ success: true, message: 'OTP resent successfully.' });
+      });
+
+      const res = await request(server)
+        .post('/api/auth/resendOtp')
+        .send({ email: 'test@example.com' });
+
+      expect(res.statusCode).toEqual(200);
+      expect(res.body).toHaveProperty('message', 'OTP resent successfully.');
+    });
+  });
+
+  describe('POST /api/auth/resetPassword', () => {
+    it('should reset password', async () => {
+      userController.resetPassword.mockImplementationOnce((req, res) => {
+        res.status(200).json({ success: true, message: 'Password reset successfully.' });
+      });
+
+      const res = await request(server)
+        .post('/api/auth/resetPassword')
+        .set('Authorization', `Bearer ${token}`)
+        .send({ oldPassword: 'password123', newPassword: 'newpassword123' });
+
+      expect(res.statusCode).toEqual(200);
+      expect(res.body).toHaveProperty('message', 'Password reset successfully.');
+    });
+  });
+
+  describe('POST /api/auth/newPassword', () => {
+    it('should set new password', async () => {
+      userController.newPassword.mockImplementationOnce((req, res) => {
+        res.status(200).json({ success: true, message: 'New password set successfully.' });
+      });
+
+      const res = await request(server)
+        .post('/api/auth/newPassword')
+        .set('Authorization', `Bearer ${token}`)
+        .send({ email: 'test@example.com', otp: '123456', newPassword: 'newpassword123' });
+
+      expect(res.statusCode).toEqual(200);
+      expect(res.body).toHaveProperty('message', 'New password set successfully.');
     });
   });
 });

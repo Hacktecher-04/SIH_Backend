@@ -1,40 +1,49 @@
 const socketIo = require('socket.io');
 const jwt = require('jsonwebtoken');
+const User = require('../models/user.model');
+const messageService = require('../services/message.service');
 
 function setupSocketIo(server) {
     const io = socketIo(server, {
         cors: {
             origin: 'http://localhost:3000',
             methods: ['GET', 'POST'],
-            allowedHeaders: ['my-custom-header'],
             credentials: true
         }
     });
 
-    // io.on(('connection'), (socket, next) => {
-    //     const token = socket.headers;
-    //     if (!token) {
-    //         return next(new Error('Authentication error'));
-    //     }
-    //     console.log(token)
+    io.use(async (socket, next) => {
+        try {
+            const token = socket.handshake.headers.authorization;
+            if (!token) {
+                return next(new Error('Authentication error: Token not provided'));
+            }
 
-    //     jwt.verify(token, 'your_secret_key', (err, decoded) => {
-    //         if (err) {
-    //             return next(new Error('Authentication error'));
-    //         }
+            const decoded = jwt.verify(token, process.env.JWT_SECRET);
+            const user = await User.findById(decoded.id).select('-password');
 
-    //         socket.decoded = decoded;
-    //         next();
-    //     });
-    //     next();
-    // })
+            if (!user) {
+                return next(new Error('Authentication error: User not found'));
+            }
+
+            socket.user = user;
+            next();
+        } catch (err) {
+            next(new Error('Authentication error: Invalid token'));
+        }
+    });
+
 
     io.on('connection', (socket) => {
-        socket.on('message', async(message) => {
-            console.log(message);
-            const response = await aiService();
-            console.log(response);
-            io.emit('message', response);
+        socket.on('message', async(data) => {
+            try {
+
+                const { message, chatId } = JSON.parse(data);
+                const response = await messageService.createMessage(message, chatId, socket.user._id);
+                io.to(socket.id).emit('message', response);
+            } catch (error) {
+                io.to(socket.id).emit('error', { message: error.message });
+            }
         });
 
         socket.on('disconnect', () => {

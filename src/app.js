@@ -7,9 +7,11 @@ require('./config/passport');
 
 const userRouter = require('./routes/user.routes');
 const researchCareerRoutes = require('./routes/researchCareer.routes');
-const suggestSkillsRoutes = require('./routes/suggestSkills..routes');
+const suggestSkillsRoutes = require('./routes/suggestSkills.routes');
 const aiRoadmapRoutes = require('./routes/aiRoadmap.routes');
-const { appendFile } = require('fs');
+const chatRoutes = require('./routes/chat.routes');
+const socket = require('./socket/socket');
+
 
 const app = express();
 const server = http.createServer(app);
@@ -41,10 +43,13 @@ app.use(session({
 app.use(passport.initialize());
 app.use(passport.session());
 
+socket(server);
+
 // 4️⃣ Routes
 app.use('/api/auth', userRouter);
 app.use('/api/researchCareer', researchCareerRoutes)
 app.use('/api/suggestSkills', suggestSkillsRoutes)
 app.use('/api/aiRoadmap', aiRoadmapRoutes);
+app.use('/api/chat', chatRoutes);
 
 module.exports = server;
