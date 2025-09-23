@@ -50,7 +50,6 @@ The JSON object must have exactly the following structure:
   const responseText = response.text().trim();
   const jsonMatch = responseText.match(/\{[\s\S]*\}/);
   const jsonString = jsonMatch ? jsonMatch[0] : responseText;
-  console.log(jsonString);
   return JSON.parse(jsonString);
 }
 
