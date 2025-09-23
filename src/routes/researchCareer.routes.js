@@ -5,7 +5,9 @@ const researchCareerController = require('../controllers/reserchCareer.controlle
 
 router.use(protect)
 
-router.post('/research-career', researchCareerController.generateRoadmap);
-router.post('/suggest-skills', researchCareerController.getSuggestSkills);
+router.post('/create', researchCareerController.generateResearchCareer);
+router.get('/get', researchCareerController.getResearhCareer);
+router.get('/:id', researchCareerController.getResearhCareerId);
+router.delete('/:id', researchCareerController.deleteResearchCareer);
 
-module.exports = router
+module.exports = router 

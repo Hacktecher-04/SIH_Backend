@@ -7,6 +7,7 @@ require('./config/passport');
 
 const userRouter = require('./routes/user.routes');
 const researchCareerRoutes = require('./routes/researchCareer.routes');
+const suggestSkillsRoutes = require('./routes/suggestSkills..routes');
 const aiRoadmapRoutes = require('./routes/aiRoadmap.routes');
 const { appendFile } = require('fs');
 
@@ -42,7 +43,8 @@ app.use(passport.session());
 
 // 4️⃣ Routes
 app.use('/api/auth', userRouter);
-app.use('/api/ai', researchCareerRoutes)
+app.use('/api/researchCareer', researchCareerRoutes)
+app.use('/api/suggestSkills', suggestSkillsRoutes)
 app.use('/api/aiRoadmap', aiRoadmapRoutes);
 
 module.exports = server;
