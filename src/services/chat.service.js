@@ -18,7 +18,10 @@ const createChat = async (userId, chat_title) => {
 
 const getChats = async (userId) => {
     try {
-        const chat = await chatModel.findOne(userId)
+        const chat = await chatModel.findOne({userId})
+        if (!chat) {
+            throw new Error("chat not found");
+        }
         return chat
     } catch (error) {
         throw new Error(error.message)
@@ -27,7 +30,7 @@ const getChats = async (userId) => {
 
 const getChatId = async (chatId) => {
     try {
-        const chat = await chatModel.findOne({ _id: chatId })
+        const chat = await chatModel.findById({ _id : chatId })
         if (!chat) {
             throw new Error("chat not found");
         }
@@ -39,7 +42,13 @@ const getChatId = async (chatId) => {
 
 const updateChat = async (chatId, chat_title) => {
     try {
-        const chat = await chatModel.findOneAndUpdate({ _id: chatId }, chat_title, { new: true })
+        if (!chat_title) {
+            throw new Error("title not found");
+        }
+        const chat = await chatModel.findOneAndUpdate({ _id: chatId }, {chat_title : chat_title}, { new: true })
+        if (!chat) {
+            throw new Error("chat not found");
+        }
         return chat
     } catch (error) {
         throw new Error(error.message);

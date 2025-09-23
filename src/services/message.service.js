@@ -3,7 +3,7 @@ const messageModel = require('../models/message.model');
 const chatModel = require('../models/chat.model');
 const chatService = require('./chat.service');
 
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+const genAI = new GoogleGenerativeAI(process.env.GEMINI_CHAT_API_KEY);
 
 async function generateMessage(chatData, history) {
     const model = genAI.getGenerativeModel({

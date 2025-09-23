@@ -4,7 +4,10 @@ const  messageService  = require('../services/message.service')
 const getChat = async (req, res) => {
     try {
         const chat = await chatService.getChats(req.user._id);
-        res.status(200).json(chat);
+        if (!chat) {
+            throw new Error("chat not found");
+        }
+        res.status(200).json({chat});
     } catch (error) {
         res.status(500).send({ message: error.message });
     }
