@@ -24,7 +24,7 @@ const researchCareerSchema = new mongoose.Schema({
             required: true
         }
     ],
-    cors_skills : [
+    core_skills : [
         {
             type : String,
             required : true
