@@ -11,9 +11,9 @@ const tools = [
         name: "googleSearch",
         description: "Searches Google dynamically for working links.",
         parameters: {
-          type: "OBJECT",
+          type: "object",
           properties: {
-            query: { type: "STRING", description: "Search query." },
+            query: { type: "string", description: "Search query." },
           },
           required: ["query"],
         },
@@ -23,12 +23,13 @@ const tools = [
 ];
 
 const model = genAI.getGenerativeModel({
-  model: "gemini-2.0-flash",
+  model: "gemini-1.5-pro",
   tools,
 });
 
 async function generateContentFromAI(goal, level, pace) {
-  const chat = model.startChat();
+  console.log("Generating roadmap for:", { goal, level, pace });
+  const chat = model.startChat({ tools })
 
   const masterPrompt = `
   You are Prism, an elite curriculum designer and strategic career mentor.  
@@ -74,32 +75,38 @@ sections: (Array of Objects) Each is a chapter in the roadmap. Every section mus
    - Redirect to a **safe, positive adjacent goal** (e.g., “hacker” → “ethical hacker / cybersecurity expert”, “drug dealer” → “pharmacist or entrepreneur in healthcare”).  
    - Mention the redirection in the JSON description.  
 `;
-  let result = await chat.sendMessage(masterPrompt);
-  let response = result.response;
 
-  const functionCalls = response.functionCalls?.();
-  if (functionCalls?.length) {
-    const call = functionCalls[0];
+  let result = await chat.sendMessage({ role: "user", parts: [{ text: masterPrompt }] });
+  
+  if (result.response.functionCalls && result.response.functionCalls.length) {
+    const call = result.response.functionCalls[0];
     if (call.name === "googleSearch") {
+      // actually run your own Google search helper
       const workingUrls = await searchAndFilter(call.args.query);
-
-      const result2 = await chat.sendMessage([
-        {
-          functionResponse: {
-            name: "googleSearch",
-            response: { results: workingUrls },
+      // send the function response back to Gemini
+      result = await chat.sendMessage({
+        role: "function",
+        parts: [
+          {
+            functionResponse: {
+              name: "googleSearch",
+              response: { results: workingUrls },
+            },
           },
-        },
-      ]);
-      response = result2.response;
+        ],
+      });
     }
   }
 
-  const responseText = response.text().trim();
-  const jsonMatch = responseText.match(/\{[\s\S]*\}/);
-  const jsonString = jsonMatch ? jsonMatch[0] : responseText;
+  // extract plain text from Gemini’s reply
+  const parts = result.response.candidates?.[0]?.content?.parts || [];
+  const text = parts.map(p => p.text || "").join("").trim();
+
+  // pull JSON out of the text
+  const jsonMatch = text.match(/\{[\s\S]*\}/);
+  const jsonString = jsonMatch ? jsonMatch[0] : text;
 
   return JSON.parse(jsonString);
 }
 
-module.exports = generateContentFromAI;
+module.exports = generateContentFromAI
