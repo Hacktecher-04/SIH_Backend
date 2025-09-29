@@ -7,4 +7,4 @@ const Port = process.env.PORT || 3000;
 
 server.listen(Port, () => {
     console.log(`Server is running on port ${Port}`);
-})
+});

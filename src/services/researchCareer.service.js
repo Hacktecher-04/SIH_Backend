@@ -1,18 +1,13 @@
-const { GoogleGenerativeAI } = require("@google/generative-ai");
-const searchAndFilter = require("../helpers/googleSearch");
+// services/geminiService.js
+const { GoogleGenAI } = require("@google/genai");
 
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-
-
-const model = genAI.getGenerativeModel({
-  model: "gemini-2.0-flash",
+// create client
+const ai = new GoogleGenAI({
+  apiKey: process.env.GEMINI_API_KEY,
 });
-
 async function generateContentFromAI(careerName) {
-  const chat = model.startChat();
-
   const masterPrompt = `
-   You are a world-class career research assistant.  
+You are a world-class career research assistant.  
 Your sole purpose is to provide a structured, high-quality summary for the career: "${careerName}".  
 You MUST respond with only a single, valid JSON object.  
 
@@ -39,25 +34,27 @@ The JSON object must have exactly the following structure:
   "deep_dive_url": "https://authoritative-resource-url-for-${careerName}"
   // Provide a single, authoritative resource URL (e.g., MDN, official professional body, or industry site—not Wikipedia)
 }
-
 `;
 
-  let result = await chat.sendMessage(masterPrompt);
-  let response = result.response;
+  const response = await ai.models.generateContent({
+    model: "gemini-2.5-flash", // fastest current model
+    contents: [
+      {
+        role: "user",
+        parts: [{ text: masterPrompt }],
+      },
+    ],
+  });
 
-
-
-  const responseText = response.text().trim();
-  const jsonMatch = responseText.match(/\{[\s\S]*\}/);
-  const jsonString = jsonMatch ? jsonMatch[0] : responseText;
+  const text = response.text.trim();
+  const jsonMatch = text.match(/\{[\s\S]*\}/);
+  const jsonString = jsonMatch ? jsonMatch[0] : text;
   return JSON.parse(jsonString);
 }
 
-async function generateSuggestSkills(industry) {
-  const chat = model.startChat();
-
+ async function generateSuggestSkills(industry) {
   const masterPrompt = `
-    You are an expert industry analyst. For the industry "${industry}", generate a strategic skill breakdown.  
+You are an expert industry analyst. For the industry "${industry}", generate a strategic skill breakdown.  
 You MUST respond with only a single, valid JSON object.  
 
 The JSON object must have exactly the following structure:  
@@ -76,16 +73,21 @@ The JSON object must have exactly the following structure:
     "tags": ["Skill1", "Skill2", "Skill3"]
   }
 }
-
 `;
 
-  let result = await chat.sendMessage(masterPrompt);
-  let response = result.response;
+  const response = await ai.models.generateContent({
+    model: "gemini-2.5-flash",
+    contents: [
+      {
+        role: "user",
+        parts: [{ text: masterPrompt }],
+      },
+    ],
+  });
 
-
-  const responseText = response.text().trim();
-  const jsonMatch = responseText.match(/\{[\s\S]*\}/);
-  const jsonString = jsonMatch ? jsonMatch[0] : responseText;
+  const text = response.text.trim();
+  const jsonMatch = text.match(/\{[\s\S]*\}/);
+  const jsonString = jsonMatch ? jsonMatch[0] : text;
   return JSON.parse(jsonString);
 }
 

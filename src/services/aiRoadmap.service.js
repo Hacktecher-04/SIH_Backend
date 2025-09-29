@@ -1,70 +1,39 @@
-require("dotenv").config();
-const { GoogleGenerativeAI } = require("@google/generative-ai");
-const searchAndFilter = require("../helpers/googleSearch");
-const masterPrompts = require('../prompts/roadmap.prompt')
+const { GoogleGenAI } = require("@google/genai");
+const masterPrompts = require("../prompts/roadmap.prompt"); // adjust path as needed
 
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-
-const tools = [
-  {
-    functionDeclarations: [
-      {
-        name: "googleSearch",
-        description: "Searches Google dynamically for working links.",
-        parameters: {
-          type: "object",
-          properties: {
-            query: { type: "string", description: "Search query." },
-          },
-          required: ["query"],
-        },
-      },
-    ],
-  },
-];
-
-const model = genAI.getGenerativeModel({
-  model: "gemini-1.5-pro",
-  tools,
+// Initialize GenAI client (it will pick up your API key via env)
+const ai = new GoogleGenAI({
+  apiKey: process.env.GEMINI_API_KEY,
 });
 
 async function generateContentFromAI(goal, level, pace) {
-  console.log("Generating roadmap for:", { goal, level, pace });
-  const chat = model.startChat({ tools })
 
-  const masterPrompt = masterPrompts(goal, level, pace)
+  const prompt = masterPrompts(goal, level, pace);
 
-  let result = await chat.sendMessage({ role: "user", parts: [{ text: masterPrompt }] });
-  
-  if (result.response.functionCalls && result.response.functionCalls.length) {
-    const call = result.response.functionCalls[0];
-    if (call.name === "googleSearch") {
-      // actually run your own Google search helper
-      const workingUrls = await searchAndFilter(call.args.query);
-      // send the function response back to Gemini
-      result = await chat.sendMessage({
-        role: "function",
-        parts: [
-          {
-            functionResponse: {
-              name: "googleSearch",
-              response: { results: workingUrls },
-            },
-          },
-        ],
-      });
-    }
-  }
+  // call Gemini via genai SDK
+  const response = await ai.models.generateContent({
+    model: "gemini-2.5-flash", // or whichever model you prefer
+    contents: [
+      {
+        role: "user",
+        parts: [{ text: prompt }],
+      },
+    ],
+  });
 
-  // extract plain text from Gemini’s reply
-  const parts = result.response.candidates?.[0]?.content?.parts || [];
-  const text = parts.map(p => p.text || "").join("").trim();
-
-  // pull JSON out of the text
+  // response.text gives the raw text output
+  const text = response.text.trim();
+  // Try to extract JSON part
   const jsonMatch = text.match(/\{[\s\S]*\}/);
   const jsonString = jsonMatch ? jsonMatch[0] : text;
 
-  return JSON.parse(jsonString);
+  console.log(jsonString)
+  try {
+    return JSON.parse(jsonString);
+  } catch (err) {
+    console.error("Failed to parse JSON from Gemini output:", err, jsonString);
+    throw new Error("Gemini returned non-JSON or malformed output");
+  }
 }
 
-module.exports = generateContentFromAI
+module.exports =  generateContentFromAI;
