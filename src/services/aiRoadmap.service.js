@@ -12,7 +12,7 @@ async function generateContentFromAI(goal, level, pace) {
 
   // call Gemini via genai SDK
   const response = await ai.models.generateContent({
-    model: "gemini-2.5-flash", // or whichever model you prefer
+    model: "gemini-2.0-flash", // or whichever model you prefer
     contents: [
       {
         role: "user",
