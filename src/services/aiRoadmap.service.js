@@ -83,7 +83,7 @@ async function searchYouTube(query) {
 /* ================== DuckDuckGo Search ================== */
 async function searchDuckDuckGo(query) {
   // Skip if running on Render without remote browser
-  if (process.env.RENDER && !process.env.BROWSERLESS_WS_URL) {
+  if (!process.env.BROWSERLESS_WS_URL) {
     console.warn("Skipping DuckDuckGo search: Chrome not available on Render");
     return [];
   }
@@ -113,7 +113,6 @@ async function searchDuckDuckGo(query) {
           type: "article",
         }))
     );
-
     return results;
   } catch (err) {
     console.error("DuckDuckGo search failed:", err);
