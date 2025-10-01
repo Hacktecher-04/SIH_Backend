@@ -5,9 +5,9 @@
   "main": "server.js",
   "scripts": {
     "test": "jest",
+    "postinstall": "npx puppeteer install chrome",
     "start": "node server.js",
-    "dev": "npx nodemon server.js",
-    "postinstall": "npx puppeteer browsers install chrome"
+    "dev": "npx nodemon server.js"
   },
   "keywords": [],
   "author": "",

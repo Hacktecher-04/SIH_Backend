@@ -22,7 +22,8 @@ async function getBrowser() {
         "--disable-dev-shm-usage",
         "--disable-accelerated-2d-canvas",
         "--disable-gpu"
-      ]
+      ],
+      executablePath: puppeteer.executablePath(),
     });
   }
   return browser;
