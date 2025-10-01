@@ -10,20 +10,22 @@ const ai = new GoogleGenAI({
   apiKey: process.env.GEMINI_API_KEY,
 });
 
-let browser; // singleton browser
+let browser;
 
+// Deployment-safe browser getter
 async function getBrowser() {
-  if (!browser || !browser.isConnected()) {
+  if (browser && browser.isConnected()) return browser;
+
+  if (process.env.BROWSERLESS_WS_URL) {
+    // Use remote Browserless for Render
+    browser = await puppeteer.connect({
+      browserWSEndpoint: process.env.BROWSERLESS_WS_URL,
+    });
+  } else {
+    // Local development
     browser = await puppeteer.launch({
       headless: true,
-      args: [
-        "--no-sandbox",
-        "--disable-setuid-sandbox",
-        "--disable-dev-shm-usage",
-        "--disable-accelerated-2d-canvas",
-        "--disable-gpu"
-      ],
-      executablePath: puppeteer.executablePath(),
+      args: ["--no-sandbox", "--disable-setuid-sandbox"],
     });
   }
   return browser;
@@ -40,13 +42,10 @@ async function generateContentFromAI(goal, level, pace) {
     });
 
     const text = response.text.trim();
-
-    // Attempt to extract JSON
     const jsonMatch = text.match(/\{[\s\S]*\}/);
     const jsonString = jsonMatch ? jsonMatch[0] : null;
 
     if (!jsonString) throw new Error("No JSON found in Gemini output");
-
     return JSON.parse(jsonString);
   } catch (err) {
     console.error("Failed to parse Gemini output:", err);
@@ -83,6 +82,12 @@ async function searchYouTube(query) {
 
 /* ================== DuckDuckGo Search ================== */
 async function searchDuckDuckGo(query) {
+  // Skip if running on Render without remote browser
+  if (process.env.RENDER && !process.env.BROWSERLESS_WS_URL) {
+    console.warn("Skipping DuckDuckGo search: Chrome not available on Render");
+    return [];
+  }
+
   const browser = await getBrowser();
   const page = await browser.newPage();
 
@@ -95,7 +100,6 @@ async function searchDuckDuckGo(query) {
 
     const searchUrl = `https://duckduckgo.com/?q=${encodeURIComponent(query)}+documentation+articles`;
     await page.goto(searchUrl, { waitUntil: "domcontentloaded", timeout: 30000 });
-
     await page.waitForSelector("a.result__a, h2 a", { timeout: 15000 });
 
     const results = await page.evaluate(() =>
