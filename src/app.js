@@ -11,6 +11,7 @@ const suggestSkillsRoutes = require('./routes/suggestSkills.routes');
 const aiRoadmapRoutes = require('./routes/aiRoadmap.routes');
 const chatRoutes = require('./routes/chat.routes');
 const socket = require('./socket/socket');
+const messageModel = require('./models/message.model');
 
 
 const app = express();
@@ -44,6 +45,13 @@ app.use(passport.initialize());
 app.use(passport.session());
 
 socket(server);
+
+app.router.get('/', (req, res) => {
+  res.json({
+    message : "server is running"
+  })
+})
+
 
 // 4️⃣ Routes
 app.use('/api/auth', userRouter);
