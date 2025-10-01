@@ -1,45 +1,16 @@
 const puppeteer = require("puppeteer-extra");
 const StealthPlugin = require("puppeteer-extra-plugin-stealth");
 const { GoogleGenAI } = require("@google/genai");
-const masterPrompts = require("../prompts/roadmap.prompt"); // adjust path as needed
 const axios = require("axios");
+const masterPrompts = require("../prompts/roadmap.prompt"); // adjust path
+
+puppeteer.use(StealthPlugin());
 
 const ai = new GoogleGenAI({
   apiKey: process.env.GEMINI_API_KEY,
 });
 
-async function generateContentFromAI(goal, level, pace) {
-
-  const prompt = masterPrompts(goal, level, pace);
-
-  // call Gemini via genai SDK
-  const response = await ai.models.generateContent({
-    model: "gemini-2.0-flash", // or whichever model you prefer
-    contents: [
-      {
-        role: "user",
-        parts: [{ text: prompt }],
-      },
-    ],
-  });
-
-  // response.text gives the raw text output
-  const text = response.text.trim();
-  // Try to extract JSON part
-  const jsonMatch = text.match(/\{[\s\S]*\}/);
-  const jsonString = jsonMatch ? jsonMatch[0] : text;
-
-  try {
-    return JSON.parse(jsonString);
-  } catch (err) {
-    console.error("Failed to parse JSON from Gemini output:", err, jsonString);
-    throw new Error("Gemini returned non-JSON or malformed output");
-  }
-}
-
-puppeteer.use(StealthPlugin());
-
-let browser;
+let browser; // singleton browser
 
 async function getBrowser() {
   if (!browser || !browser.isConnected()) {
@@ -57,48 +28,73 @@ async function getBrowser() {
   return browser;
 }
 
-/* ============= 🔹 YouTube Search 🔹 ============= */
-async function searchYouTube(query) {
-  const url = "https://www.googleapis.com/youtube/v3/search";
-  const { data } = await axios.get(url, {
-    params: {
-      part: "snippet",
-      q: query,
-      maxResults: 5,
-      type: "video",
-      key: process.env.YOUTUBE_API_KEY
-    }
-  });
+/* ================== Gemini AI ================== */
+async function generateContentFromAI(goal, level, pace) {
+  const prompt = masterPrompts(goal, level, pace);
 
-  return data.items.map(item => ({
-    title: item.snippet.title,
-    url: `https://www.youtube.com/watch?v=${item.id.videoId}`,
-    channel: item.snippet.channelTitle,
-    description: item.snippet.description,
-    thumbnail: item.snippet.thumbnails?.default?.url,
-    type: "video"
-  }));
+  try {
+    const response = await ai.models.generateContent({
+      model: "gemini-2.0-flash",
+      contents: [{ role: "user", parts: [{ text: prompt }] }],
+    });
+
+    const text = response.text.trim();
+
+    // Attempt to extract JSON
+    const jsonMatch = text.match(/\{[\s\S]*\}/);
+    const jsonString = jsonMatch ? jsonMatch[0] : null;
+
+    if (!jsonString) throw new Error("No JSON found in Gemini output");
+
+    return JSON.parse(jsonString);
+  } catch (err) {
+    console.error("Failed to parse Gemini output:", err);
+    return { success: false, message: "AI returned invalid output" };
+  }
 }
 
+/* ================== YouTube Search ================== */
+async function searchYouTube(query) {
+  try {
+    const { data } = await axios.get("https://www.googleapis.com/youtube/v3/search", {
+      params: {
+        part: "snippet",
+        q: query,
+        maxResults: 5,
+        type: "video",
+        key: process.env.YOUTUBE_API_KEY,
+      },
+    });
 
+    return data.items.map(item => ({
+      title: item.snippet.title,
+      url: `https://www.youtube.com/watch?v=${item.id.videoId}`,
+      channel: item.snippet.channelTitle,
+      description: item.snippet.description,
+      thumbnail: item.snippet.thumbnails?.default?.url,
+      type: "video",
+    }));
+  } catch (err) {
+    console.error("YouTube search failed:", err);
+    return [];
+  }
+}
+
+/* ================== DuckDuckGo Search ================== */
 async function searchDuckDuckGo(query) {
   const browser = await getBrowser();
   const page = await browser.newPage();
 
   try {
     await page.setRequestInterception(true);
-    page.on("request", (req) => {
-      if (["image", "stylesheet", "font", "media"].includes(req.resourceType())) {
-        req.abort();
-      } else {
-        req.continue();
-      }
+    page.on("request", req => {
+      if (["image", "stylesheet", "font", "media"].includes(req.resourceType())) req.abort();
+      else req.continue();
     });
 
     const searchUrl = `https://duckduckgo.com/?q=${encodeURIComponent(query)}+documentation+articles`;
     await page.goto(searchUrl, { waitUntil: "domcontentloaded", timeout: 30000 });
 
-    // ✅ Wait for either selector (normal or HTML version)
     await page.waitForSelector("a.result__a, h2 a", { timeout: 15000 });
 
     const results = await page.evaluate(() =>
@@ -109,33 +105,33 @@ async function searchDuckDuckGo(query) {
           url: a.href.startsWith("/l/?uddg=")
             ? decodeURIComponent(a.href.split("uddg=")[1])
             : a.href,
-          type: "article"
+          type: "article",
         }))
     );
+
     return results;
+  } catch (err) {
+    console.error("DuckDuckGo search failed:", err);
+    return [];
   } finally {
     if (!page.isClosed()) await page.close();
   }
 }
 
+/* ================== Combined Data Generator ================== */
+async function generateData(topic) {
+  const [duckResults, youtubeResults] = await Promise.all([
+    searchDuckDuckGo(topic),
+    searchYouTube(topic),
+  ]);
 
-// Graceful shutdown
+  return { topic, google: duckResults, youtube: youtubeResults };
+}
+
+/* ================== Graceful Shutdown ================== */
 process.on("SIGINT", async () => {
   if (browser) await browser.close();
   process.exit();
 });
 
-/**
- * Combined Data
- */
-async function generateData(topic) {
-  const [duckDuckGoResults, youtubeResults] = await Promise.all([
-    searchDuckDuckGo(topic),
-    searchYouTube(topic),
-  ]);
-
-  return { topic, google: duckDuckGoResults, youtube: youtubeResults };
-}
-
-
-module.exports = { generateContentFromAI,  generateData };
+module.exports = { generateContentFromAI, generateData };
