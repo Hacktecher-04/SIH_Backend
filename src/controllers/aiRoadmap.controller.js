@@ -51,6 +51,24 @@ const getSingleRoadmap = async (req, res) => {
     }
 };
 
+const generateData = async (req, res) => {
+    try {
+       const { roadmapId } = req.params;
+         const { topic } = req.body;
+       if (!roadmapId) {
+           return res.status(400).json({ success: false, message: "Roadmap ID is required." });
+       }
+       const newRoadmap = await roadmapService.getData(roadmapId, topic);
+        res.status(201).json({
+            success: true,  
+            message: "Roadmap created successfully!",
+            data: { generateData: newRoadmap }
+        });
+    } catch (error) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+};
+
 const deleteRoadmap = async (req, res) => {
     try {
         const { id } = req.params;
@@ -65,5 +83,6 @@ module.exports = {
     generateRoadmap,
     getAllUserRoadmaps,
     getSingleRoadmap,
+    generateData,
     deleteRoadmap
 };
