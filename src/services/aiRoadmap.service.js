@@ -142,7 +142,10 @@ async function generateData(topic) {
             searchDuckDuckGo(topic),
             searchYouTube(topic),
         ]);
-        const finalData = { topic, articles: duckResults, videos: youtubeResults };
+        const finalData = { topic, google: duckResults, videos: youtubeResults };
+        if(!finalData) {
+            throw new Error("data not created");
+        }
         return finalData;
     } catch (err) {
         console.error("❌ Failed during data generation or saving:", err.message);
