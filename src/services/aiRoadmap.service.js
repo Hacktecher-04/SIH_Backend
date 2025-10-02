@@ -1,30 +1,33 @@
 const puppeteer = require("puppeteer-extra");
 const StealthPlugin = require("puppeteer-extra-plugin-stealth");
 const chromium = require("@sparticuz/chromium");
-// CORRECTED IMPORT
 const { GoogleGenerativeAI } = require("@google/generative-ai");
 const axios = require("axios");
 const masterPrompts = require("../prompts/roadmap.prompt"); // adjust path
 
 puppeteer.use(StealthPlugin());
 
-// CORRECTED CONSTRUCTOR
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 
-let browser;
+// The global instance to hold our single, persistent browser
+let browserInstance = null;
 
-/* ================== UNIFIED BROWSER GETTER ================== */
+/* ================== OPTIMIZED "WARM" BROWSER GETTER ================== */
 async function getBrowser() {
-    if (browser && browser.isConnected()) {
-        return browser;
+    // If the instance already exists and is connected, reuse it
+    if (browserInstance && browserInstance.isConnected()) {
+        console.log("Reusing existing browser instance.");
+        return browserInstance;
     }
+
+    console.log("No active browser instance found. Launching a new one...");
     const isProduction = process.env.RENDER === 'true';
     try {
         let browserOptions;
         if (isProduction) {
             console.log("Launching production browser on Render...");
             browserOptions = {
-                args: chromium.args,
+                args: [ ...chromium.args, '--disable-dev-shm-usage', '--no-zygote', '--single-process' ],
                 defaultViewport: chromium.defaultViewport,
                 executablePath: await chromium.executablePath(),
                 headless: chromium.headless,
@@ -36,8 +39,10 @@ async function getBrowser() {
                 args: ["--no-sandbox", "--disable-setuid-sandbox"],
             };
         }
-        browser = await puppeteer.launch(browserOptions);
-        return browser;
+        // Assign the new browser to our global instance
+        browserInstance = await puppeteer.launch(browserOptions);
+        console.log("✅ New browser instance launched successfully.");
+        return browserInstance;
     } catch (err) {
         console.error("❌ Failed to launch browser:", err.message);
         throw err;
@@ -48,8 +53,7 @@ async function getBrowser() {
 async function generateContentFromAI(goal, level, pace) {
     const prompt = masterPrompts(goal, level, pace);
     try {
-        // This line will now work correctly
-        const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
+        const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
         const result = await model.generateContent(prompt);
         const response = await result.response;
 
@@ -71,32 +75,17 @@ async function generateContentFromAI(goal, level, pace) {
     }
 }
 
-// ... the rest of your functions (searchYouTube, searchDuckDuckGo, etc.) remain the same ...
-
 /* ================== YouTube Search ================== */
 async function searchYouTube(query) {
     try {
         const { data } = await axios.get("https://www.googleapis.com/youtube/v3/search", {
-            params: {
-                part: "snippet",
-                q: query,
-                maxResults: 5,
-                type: "video",
-                key: process.env.YOUTUBE_API_KEY,
-            },
+            params: { /* ... params ... */ },
         });
         if (!data || !Array.isArray(data.items)) {
-            console.warn("⚠️ YouTube API did not return an array of items. This could be due to an invalid API key or quota issues.");
+            console.warn("⚠️ YouTube API did not return an array of items.");
             return [];
         }
-        return data.items.map((item) => ({
-            title: item.snippet.title,
-            url: `https://www.youtube.com/watch?v=${item.id.videoId}`,
-            channel: item.snippet.channelTitle,
-            description: item.snippet.description,
-            thumbnail: item.snippet.thumbnails?.default?.url,
-            type: "video",
-        }));
+        return data.items.map((item) => ({ /* ... mapping ... */ }));
     } catch (err) {
         console.error("❌ YouTube search failed:", err.response?.status, err.response?.data || err.message);
         return [];
@@ -105,7 +94,9 @@ async function searchYouTube(query) {
 
 /* ================== DuckDuckGo Search ================== */
 async function searchDuckDuckGo(query) {
+    // Get the single, shared browser instance
     const browser = await getBrowser();
+    // Create a new page for this specific task
     const page = await browser.newPage();
     try {
         await page.setRequestInterception(true);
@@ -120,18 +111,17 @@ async function searchDuckDuckGo(query) {
         const results = await page.evaluate(() =>
             Array.from(document.querySelectorAll("h2 a"))
                 .slice(0, 5)
-                .map((a) => ({
-                    title: a.textContent.trim(),
-                    url: a.href,
-                    type: "article",
-                }))
+                .map((a) => ({ title: a.textContent.trim(), url: a.href, type: "article" }))
         );
         return results;
     } catch (err) {
         console.error("❌ DuckDuckGo search failed:", err.message);
         return [];
     } finally {
-        if (!page.isClosed()) await page.close();
+        // IMPORTANT: We only close the PAGE now, not the whole browser
+        if (page && !page.isClosed()) {
+            await page.close();
+        }
     }
 }
 
@@ -142,25 +132,30 @@ async function generateData(topic) {
             searchDuckDuckGo(topic),
             searchYouTube(topic),
         ]);
-        const finalData = { topic, google: duckResults, videos: youtubeResults };
+        
+        // CORRECTED: The property name is 'articles' to match the searchDuckDuckGo output
+        const finalData = { topic, articles: duckResults, videos: youtubeResults };
+        
         if(!finalData) {
             throw new Error("data not created");
         }
-        if(!finalData.google || !finalData.videos) {
+        // CORRECTED: The property name is 'articles'
+        if(!finalData.articles || !finalData.videos) {
             throw new Error("data not created");
         }
         return finalData;
     } catch (err) {
-        console.error("❌ Failed during data generation or saving:", err.message);
-        return { success: false, message: `Failed during data generation or saving: ${err.message}` };
+        console.error("❌ Failed during data generation:", err.message);
+        return { success: false, message: `Failed during data generation: ${err.message}` };
     }
 }
 
 /* ================== Graceful Shutdown ================== */
 async function closeBrowser() {
-    if (browser) {
-        await browser.close();
-        browser = null;
+    // This function now closes the single, shared instance
+    if (browserInstance) {
+        await browserInstance.close();
+        browserInstance = null;
         console.log("Browser closed gracefully.");
     }
 }
