@@ -115,7 +115,7 @@ async function searchDuckDuckGo(query) {
             else req.continue();
         });
         const searchUrl = `https://duckduckgo.com/?q=${encodeURIComponent(query)}+documentation+articles`;
-        await page.goto(searchUrl, { waitUntil: "domcontentloaded", timeout: 30000 });
+        await page.goto(searchUrl, { waitUntil: "domcontentloaded", timeout: 60000 });
         await page.waitForSelector("h2 a", { timeout: 15000 });
         const results = await page.evaluate(() =>
             Array.from(document.querySelectorAll("h2 a"))
