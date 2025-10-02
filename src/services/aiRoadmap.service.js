@@ -134,7 +134,7 @@ async function generateData(topic) {
         ]);
         
         // CORRECTED: The property name is 'articles' to match the searchDuckDuckGo output
-        const finalData = { topic, articles: duckResults, videos: youtubeResults };
+        const finalData = { topic, google: duckResults, videos: youtubeResults };
         
         if(!finalData) {
             throw new Error("data not created");
