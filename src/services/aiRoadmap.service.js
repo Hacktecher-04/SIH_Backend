@@ -1,17 +1,19 @@
 const puppeteer = require("puppeteer-extra");
 const StealthPlugin = require("puppeteer-extra-plugin-stealth");
 const chromium = require("@sparticuz/chromium");
-const { GoogleGenAI } = require("@google/genai");
+// CORRECTED IMPORT
+const { GoogleGenerativeAI } = require("@google/generative-ai");
 const axios = require("axios");
 const masterPrompts = require("../prompts/roadmap.prompt"); // adjust path
 
 puppeteer.use(StealthPlugin());
 
-const genAI = new GoogleGenAI(process.env.GEMINI_API_KEY);
+// CORRECTED CONSTRUCTOR
+const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 
 let browser;
 
-/* ================== UNIFIED BROWSER GETTER (WORKS LOCALLY & ON RENDER) ================== */
+/* ================== UNIFIED BROWSER GETTER ================== */
 async function getBrowser() {
     if (browser && browser.isConnected()) {
         return browser;
@@ -46,19 +48,30 @@ async function getBrowser() {
 async function generateContentFromAI(goal, level, pace) {
     const prompt = masterPrompts(goal, level, pace);
     try {
-        const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash"});
+        // This line will now work correctly
+        const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
         const result = await model.generateContent(prompt);
         const response = await result.response;
+
+        if (response.promptFeedback?.blockReason) {
+            throw new Error(`AI response was blocked. Reason: ${response.promptFeedback.blockReason}`);
+        }
+
         const text = response.text().trim();
-        const jsonMatch = text.match(/\{[\s\S]*\}/);
-        const jsonString = jsonMatch ? jsonMatch[0] : null;
-        if (!jsonString) throw new Error("No JSON found in Gemini output");
+        const jsonMatch = text.match(/```json\s*(\{[\s\S]*\})\s*```|(\{[\s\S]*\})/);
+        const jsonString = jsonMatch ? (jsonMatch[1] || jsonMatch[2]) : null;
+
+        if (!jsonString) {
+            throw new Error("No valid JSON block found in the AI's output.");
+        }
         return JSON.parse(jsonString);
     } catch (err) {
-        console.error("❌ Failed to parse Gemini output:", err.message);
-        return { success: false, message: "AI returned invalid output" };
+        console.error("❌ Failed in generateContentFromAI:", err.message);
+        return { success: false, message: `AI Error: ${err.message}` };
     }
 }
+
+// ... the rest of your functions (searchYouTube, searchDuckDuckGo, etc.) remain the same ...
 
 /* ================== YouTube Search ================== */
 async function searchYouTube(query) {
@@ -72,15 +85,10 @@ async function searchYouTube(query) {
                 key: process.env.YOUTUBE_API_KEY,
             },
         });
-
-        // =================================================================
-        //  FIX IS HERE: Add a safety check before using .map()
-        // =================================================================
         if (!data || !Array.isArray(data.items)) {
             console.warn("⚠️ YouTube API did not return an array of items. This could be due to an invalid API key or quota issues.");
-            return []; // Return an empty array to prevent a crash
+            return [];
         }
-
         return data.items.map((item) => ({
             title: item.snippet.title,
             url: `https://www.youtube.com/watch?v=${item.id.videoId}`,
@@ -91,7 +99,7 @@ async function searchYouTube(query) {
         }));
     } catch (err) {
         console.error("❌ YouTube search failed:", err.response?.status, err.response?.data || err.message);
-        return []; // Return an empty array on error
+        return [];
     }
 }
 
@@ -135,9 +143,8 @@ async function generateData(topic) {
             searchYouTube(topic),
         ]);
         const finalData = { topic, articles: duckResults, videos: youtubeResults };
-        return finalData; // Return the data whether it was saved or not
+        return finalData;
     } catch (err) {
-        // This will catch any unexpected errors from the Promise.all or the subsequent code
         console.error("❌ Failed during data generation or saving:", err.message);
         return { success: false, message: `Failed during data generation or saving: ${err.message}` };
     }
