@@ -146,6 +146,9 @@ async function generateData(topic) {
         if(!finalData) {
             throw new Error("data not created");
         }
+        if(!finalData.google || !finalData.videos) {
+            throw new Error("data not created");
+        }
         return finalData;
     } catch (err) {
         console.error("❌ Failed during data generation or saving:", err.message);
