@@ -48,7 +48,7 @@ const getData = async (roadmapId, topicTitle) => {
       section.topics = section.topics.map((t) => {
         if (t.topicTitle === topicTitle) {
           // --- FIX HERE: Changed .google to .articles ---
-          t.googleSearchQueries = generatedContent.articles.map(item => ({
+          t.googleSearchQueries = generatedContent.google.map(item => ({
             title: item.title,
             url: item.url,
             type: item.type
