@@ -53,7 +53,7 @@ async function getBrowser() {
 async function generateContentFromAI(goal, level, pace) {
     const prompt = masterPrompts(goal, level, pace);
     try {
-        const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+        const model = genAI.getGenerativeModel({ model: process.env.GEMINI_MODEL });
         const result = await model.generateContent(prompt);
         const response = await result.response;
 
