@@ -9,6 +9,7 @@ const resourceSchema = new mongoose.Schema({
 const videoResourceSchema = new mongoose.Schema({
   title: { type: String, required: true },
   url: { type: String, required: true },
+  description : { type : String},
   type: { type: String, default: "video" }
 }, { _id: false });
 

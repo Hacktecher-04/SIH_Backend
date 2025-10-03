@@ -27,7 +27,7 @@ async function getBrowser() {
         if (isProduction) {
             console.log("Launching production browser on Render...");
             browserOptions = {
-                args: [ ...chromium.args, '--disable-dev-shm-usage', '--no-zygote', '--single-process' ],
+                args: [...chromium.args, '--disable-dev-shm-usage', '--no-zygote', '--single-process'],
                 defaultViewport: chromium.defaultViewport,
                 executablePath: await chromium.executablePath(),
                 headless: chromium.headless,
@@ -79,15 +79,24 @@ async function generateContentFromAI(goal, level, pace) {
 async function searchYouTube(query) {
     try {
         const { data } = await axios.get("https://www.googleapis.com/youtube/v3/search", {
-            params: { /* ... params ... */ },
+            params: {
+                part: "snippet",
+                q: query,
+                maxResults: 5,
+                type: "video",
+                key: process.env.YOUTUBE_API_KEY,
+            },
         });
-        if (!data || !Array.isArray(data.items)) {
-            console.warn("⚠️ YouTube API did not return an array of items.");
-            return [];
-        }
-        return data.items.map((item) => ({ /* ... mapping ... */ }));
+        return data.items.map(item => ({
+            title: item.snippet.title,
+            url: `https://www.youtube.com/watch?v=${item.id.videoId}`,
+            channel: item.snippet.channelTitle,
+            description: item.snippet.description,
+            thumbnail: item.snippet.thumbnails?.default?.url,
+            type: "video",
+        }));
     } catch (err) {
-        console.error("❌ YouTube search failed:", err.response?.status, err.response?.data || err.message);
+        console.error("YouTube search failed:", err.response?.data || err.message);
         return [];
     }
 }
@@ -132,15 +141,15 @@ async function generateData(topic) {
             searchDuckDuckGo(topic),
             searchYouTube(topic),
         ]);
-        
+
         // CORRECTED: The property name is 'articles' to match the searchDuckDuckGo output
         const finalData = { topic, google: duckResults, videos: youtubeResults };
-        
-        if(!finalData) {
+
+        if (!finalData) {
             throw new Error("data not created");
         }
         // CORRECTED: The property name is 'articles'
-        if(!finalData.articles || !finalData.videos) {
+        if (!finalData.google || !finalData.videos) {
             throw new Error("data not created");
         }
         return finalData;
