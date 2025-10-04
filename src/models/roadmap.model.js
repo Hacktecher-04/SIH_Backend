@@ -18,8 +18,7 @@ const topicSchema = new mongoose.Schema({
   durationEstimateHours: { type: Number, default: 0 },
   googleSearchQueries: { type: [resourceSchema], default: [] }, // ✅ now stores objects
   videoResources: { type: [videoResourceSchema], default: [] }, // ✅ now stores objects
-  prerequisites: { type: [String], default: [] },
-  resources: { type: [String], default: [] }
+  prerequisites: { type: [String], default: [] }
 }, { _id: false });
 
 
